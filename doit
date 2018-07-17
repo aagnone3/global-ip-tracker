@@ -1,0 +1,28 @@
+#!/bin/bash
+SRC_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
+IP_GPG_FILE=$SRC_DIR/known_ip.gpg
+IP_FILE=$SRC_DIR/known_ip
+LOG_FILE=$SRC_DIR/log
+PASS_PHRASE_FILE=$SRC_DIR/.passphrase
+DEBUG=0
+
+function get_global_ip() {
+    current_ip=$(curl ipinfo.io/ip 2>/dev/null)
+    [[ $DEBUG -eq 1 ]] && echo "current ip: $current_ip"
+}
+
+function get_stored_ip() {
+    gpg --batch --passphrase-file $PASS_PHRASE_FILE --yes -o $IP_FILE --decrypt $IP_GPG_FILE
+    stored_ip=$(cat $IP_FILE)
+    [[ $DEBUG -eq 1 ]] && echo "stored ip: $stored_ip"
+}
+
+function update_stored_ip() {
+    echo $current_ip > $IP_FILE
+    gpg --batch --passphrase-file $PASS_PHRASE_FILE --yes -o $IP_GPG_FILE --symmetric $IP_FILE
+    rm $IP_FILE
+}
+
+get_global_ip
+get_stored_ip
+[[ $current_ip != $stored_ip ]] && update_stored_ip
